@@ -89,7 +89,7 @@ namespace IcuUtil
 
 		std::wstring content(str.size(), 0);
 		const char* in_source = &str[0];
-		auto  tmp_target = reinterpret_cast<UChar*>(content.data());
+		auto  tmp_target = reinterpret_cast<UChar*>(&content[0]);
 		const auto tmp_buf = tmp_target;
 
 		ucnv_toUnicode(pFromCnv, &tmp_target, tmp_target + content.size(), &in_source, in_source + str.size(), NULL, flush, &inerr);
