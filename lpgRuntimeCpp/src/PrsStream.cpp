@@ -273,6 +273,11 @@ int PrsStream::getLineNumberOfCharAt(int i)
 	return iLexStream->getLineNumberOfCharAt(i);
 }
 
+int PrsStream::getColumnOfCharAt(int i)
+{
+	return iLexStream->getColumnOfCharAt(i);
+}
+
 int PrsStream::getFirstRealToken(int i)
 {
 	while (i >= len)

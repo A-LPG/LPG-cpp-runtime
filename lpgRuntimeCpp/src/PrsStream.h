@@ -106,7 +106,7 @@ struct PrsStream :public IPrsStream, public ParseErrorCodes
 
     int getLineNumberOfCharAt(int i);
 
-    int getColumnOfCharAt(int i) { return getColumnOfCharAt(i); }
+    int getColumnOfCharAt(int i);
 
     /**
      * @deprecated replaced by {@link #getFirstRealToken(int i)}
