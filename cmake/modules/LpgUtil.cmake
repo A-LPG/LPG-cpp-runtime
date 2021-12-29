@@ -8,7 +8,7 @@ function (option_if_not_defined name description default)
 endfunction()
 
 
-macro(lspcpp_set_target_options_with_nuget_pkg target id version)
+macro(cpplpg2_set_target_options_with_nuget_pkg target id version)
     if (CMAKE_GENERATOR MATCHES "Visual Studio.*")
         target_link_libraries(${target}  ${CMAKE_BINARY_DIR}/packages/${id}.${version}/build/${id}.targets)
     else()
@@ -17,14 +17,14 @@ macro(lspcpp_set_target_options_with_nuget_pkg target id version)
 
 endmacro()
 
-macro(INSTALL_NUGET id version)
+macro(CPPLPG2_INSTALL_NUGET id version)
     if (CMAKE_GENERATOR MATCHES "Visual Studio.*")
         unset(nuget_cmd)
         list(APPEND nuget_cmd install ${id} -Prerelease -Version ${version} -OutputDirectory ${CMAKE_BINARY_DIR}/packages)
         message("excute nuget install:${nuget_cmd}")
         execute_process(COMMAND nuget ${nuget_cmd} ENCODING AUTO)
     else()
-        message(FATAL_ERROR "INSTALL_NUGET only use in Visual Studio")
+        message(FATAL_ERROR "CPPLPG2_INSTALL_NUGET only use in Visual Studio")
     endif()
 
 endmacro()
@@ -40,8 +40,8 @@ endmacro()
 ###########################################################
 function(load_library)
     if (CMAKE_GENERATOR MATCHES "Visual Studio.*")
-        INSTALL_NUGET(icu4c.v140 59.1.1)
-        INSTALL_NUGET(icu4c.v140.redist 59.1.1)
+        CPPLPG2_INSTALL_NUGET(icu4c.v140 59.1.1)
+        CPPLPG2_INSTALL_NUGET(icu4c.v140.redist 59.1.1)
     else()
         find_package(PkgConfig REQUIRED)
         if (NOT PKG_CONFIG_FOUND)
@@ -66,7 +66,7 @@ function(load_library)
 endfunction()
 
 
-function(lspcpp_set_target_options target)
+function(cpplpg2_set_target_options target)
 
     set_property(TARGET ${target} PROPERTY CXX_STANDARD_REQUIRED ON)
 
@@ -76,8 +76,8 @@ function(lspcpp_set_target_options target)
     set_property(TARGET ${target} PROPERTY CXX_EXTENSIONS OFF)
 
     if (CMAKE_GENERATOR MATCHES "Visual Studio.*")
-        lspcpp_set_target_options_with_nuget_pkg(${target} icu4c.v140 59.1.1)
-        lspcpp_set_target_options_with_nuget_pkg(${target} icu4c.v140.redist 59.1.1)
+        cpplpg2_set_target_options_with_nuget_pkg(${target} icu4c.v140 59.1.1)
+        cpplpg2_set_target_options_with_nuget_pkg(${target} icu4c.v140.redist 59.1.1)
     else()
         target_link_libraries(${target}
                 PRIVATE
@@ -178,7 +178,7 @@ endfunction()
 function(add_lpg_example target)
 
     add_executable(${target})
-    lspcpp_set_target_options(${target})
+    cpplpg2_set_target_options(${target})
     target_include_directories(${target} PRIVATE cpplpg2)
     target_link_libraries(${target} PRIVATE cpplpg2)
     add_dependencies(${target} cpplpg2)

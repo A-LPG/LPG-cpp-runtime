@@ -95,7 +95,7 @@ target_sources(cpplpg2 PRIVATE
 
 ### Compile options
 
-lspcpp_set_target_options(cpplpg2)
+cpplpg2_set_target_options(cpplpg2)
 
 set_target_properties(cpplpg2 PROPERTIES POSITION_INDEPENDENT_CODE 1)
 
