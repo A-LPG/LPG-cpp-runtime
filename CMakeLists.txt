@@ -31,10 +31,10 @@ endif()
 
 option_if_not_defined(CPPLPG2_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
 option_if_not_defined(CPPLPG2_BUILD_EXAMPLES "Build example applications" OFF)
-option_if_not_defined(CPPLPG2_ASAN "Build lsp with address sanitizer" OFF)
-option_if_not_defined(CPPLPG2_MSAN "Build lsp with memory sanitizer" OFF)
-option_if_not_defined(CPPLPG2_TSAN "Build lsp with thread sanitizer" OFF)
-option_if_not_defined(CPPLPG2_INSTALL "Create lsp install target" OFF)
+option_if_not_defined(CPPLPG2_ASAN "Build cpplpg2 with address sanitizer" OFF)
+option_if_not_defined(CPPLPG2_MSAN "Build cpplpg2 with memory sanitizer" OFF)
+option_if_not_defined(CPPLPG2_TSAN "Build cpplpg2 with thread sanitizer" OFF)
+option_if_not_defined(CPPLPG2_INSTALL "Create cpplpg2 install target" OFF)
 
 ###########################################################
 # Directories
@@ -123,8 +123,8 @@ if(CPPLPG2_INSTALL)
             )
 endif()
 
-add_subdirectory(examples)
+
 # examples
 if(CPPLPG2_BUILD_EXAMPLES)
-
+    add_subdirectory(examples)
 endif()
