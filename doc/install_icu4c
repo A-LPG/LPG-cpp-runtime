@@ -1,0 +1,17 @@
+1.install icu4c:
+   brew install icu4c
+
+2.Setting
+icu4c is keg-only, which means it was not symlinked into /opt/homebrew,
+because macOS provides libicucore.dylib (but nothing else).
+
+If you need to have icu4c first in your PATH, run:
+  echo 'export PATH="/opt/homebrew/opt/icu4c/bin:$PATH"' >> ~/.zshrc
+  echo 'export PATH="/opt/homebrew/opt/icu4c/sbin:$PATH"' >> ~/.zshrc
+
+For compilers to find icu4c you may need to set:
+  echo 'export LDFLAGS="-L/opt/homebrew/opt/icu4c/lib"' >> ~/.zshrc
+  echo 'export CPPFLAGS="-I/opt/homebrew/opt/icu4c/include"' >> ~/.zshrc
+
+For pkg-config to find icu4c you may need to set:
+  echo 'export PKG_CONFIG_PATH="/opt/homebrew/opt/icu4c/lib/pkgconfig:${PKG_CONFIG_PATH}"' >> ~/.zshrc
