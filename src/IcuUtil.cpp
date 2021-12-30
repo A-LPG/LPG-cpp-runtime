@@ -81,9 +81,9 @@ namespace IcuUtil
     {
 
 #ifdef _MSC_VER
-        std::ifstream stream(IcuUtil::s2ws(fileName), std::ios::binary);
+        std::ifstream stream(fileName, std::ios::binary);
 #else
-        std::ifstream stream(ws2s(fileName), std::ios::binary);
+        std::ifstream stream(fileName, std::ios::binary);
 
 #endif
         if (!stream.good() || stream.eof()) // No fail, bad or EOF.
