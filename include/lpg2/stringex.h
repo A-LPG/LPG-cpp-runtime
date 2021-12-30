@@ -1,10 +1,15 @@
 #ifndef _EXT_STRING_H
 #define _EXT_STRING_H
 #pragma once
+#include <algorithm>
 #include <string>
 #include <vector>
 #include <stdarg.h>
+#include<functional>
 
+#ifndef _WIN32
+#include <cstring>
+#endif
 namespace std
 {
 

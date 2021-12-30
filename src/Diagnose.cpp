@@ -10,6 +10,7 @@
 #include "lpg2/ParseTable.h"
 #include "lpg2/stringex.h"
 #include "lpg2/TokenStream.h"
+#include <limits.h>
 
 const int  DiagnoseParser::INFINITY_ = std::numeric_limits<int>::max(); // should be much bigger than MAX_DISTANCE !!!
 
