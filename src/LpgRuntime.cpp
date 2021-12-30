@@ -1,6 +1,4 @@
-#include "lpg2/lpgRuntime.h"
 
-#include <iostream>
 #include "lpg2/IcuUtil.h"
 #include "lpg2/ConfigurationElement.h"
 #include "lpg2/IAst.h"

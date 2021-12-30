@@ -20,8 +20,8 @@ struct UnsupportedOperationException :public std::exception
     {
         this->str = str;
     }
-    std::string toString() { return str; }
-    const char* what() const _NOEXCEPT
+    std::string toString() const { return str; }
+     [[nodiscard]] const char* what() const noexcept 
     {
         return  str.c_str();
     }
@@ -33,7 +33,7 @@ struct NullTerminalSymbolsException :public std::exception
      */
 
     std::string str;
-    char const* what() const _NOEXCEPT
+    [[nodiscard]]  [[nodiscard]] const char* what() const noexcept 
     {
         return  str.c_str();
     }
@@ -54,7 +54,7 @@ struct NullExportedSymbolsException :public std::exception
      */
 
     std::string str;
-    char const* what() const _NOEXCEPT
+     [[nodiscard]] const char* what() const noexcept 
     {
         return  str.c_str();
     }
@@ -73,7 +73,7 @@ struct NotDeterministicParseTableException :public std::exception
     /**
      *
      */
-    char const* what() const _NOEXCEPT
+     [[nodiscard]] const char* what() const noexcept 
     {
         return  str.c_str();
     }
@@ -94,7 +94,7 @@ struct NotBacktrackParseTableException :public std::exception
     /**
      *
      */
-    char const* what() const _NOEXCEPT
+     [[nodiscard]] const char* what() const noexcept 
     {
         return  str.c_str();
     }
@@ -115,7 +115,7 @@ struct MismatchedInputCharsException :public std::exception
     /**
      *
      */
-    char const* what() const _NOEXCEPT
+     [[nodiscard]] const char* what() const noexcept 
     {
         return  str.c_str();
     }
@@ -136,7 +136,7 @@ struct BadParseSymFileException :public std::exception
     /**
      *
      */
-    char const* what() const _NOEXCEPT
+     [[nodiscard]] const char* what() const noexcept 
     {
         return  str.c_str();
     }
@@ -157,7 +157,7 @@ struct TokenStreamNotIPrsStreamException :public std::exception
     /**
      *
      */
-    char const* what() const _NOEXCEPT
+     [[nodiscard]] const char* what() const noexcept 
     {
         return  str.c_str();
     }
@@ -178,7 +178,7 @@ struct UnavailableParserInformationException :public std::exception
     /**
      *
      */
-    char const* what() const _NOEXCEPT
+     [[nodiscard]] const char* what() const noexcept 
     {
         return  str.c_str();
     }
@@ -199,7 +199,7 @@ struct UndefinedEofSymbolException :public std::exception
     /**
      *
      */
-    char const* what() const _NOEXCEPT
+     [[nodiscard]] const char* what() const noexcept 
     {
         return  str.c_str();
     }
@@ -240,7 +240,7 @@ struct UnknownStreamType :public std::exception
      */
 
     std::string str;
-    char const* what() const _NOEXCEPT
+     [[nodiscard]] const char* what() const noexcept 
     {
         return  str.c_str();
     }
@@ -269,7 +269,7 @@ struct BadParseException :public std::exception
         format.format("%d", error_token);
         str += format;
     }
-    char const* what() const _NOEXCEPT
+     [[nodiscard]] const char* what() const noexcept 
     {
 
         return  str.c_str();
@@ -287,7 +287,7 @@ struct StringIndexOutOfBoundsException: public std::exception
         str += format;
     }
 
-    char const* what() const _NOEXCEPT
+     [[nodiscard]] const char* what() const noexcept 
     {
         return  str.c_str();
     }
