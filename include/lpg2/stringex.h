@@ -668,26 +668,28 @@ namespace std
             }
 
             va_list argList;
-            char* pbuf = 0;
             va_start( argList, format_string );
+
 #ifdef _WIN32
             int len = _vscprintf( format_string, argList );
-#else
-            int len = vsnprintf(nullptr, 0, format_string, argList);
-#endif
-            pbuf = new char[len + 1];
+            char* pbuf = new char[len + 1];
             if (pbuf != 0)
             {
-#ifdef _WIN32
                 vsprintf_s( pbuf, len + 1, format_string, argList );
-#else
-                vsprintf(pbuf, format_string, argList);
-#endif
                 *this = pbuf;
+                delete[] pbuf;
             }
-            delete[] pbuf;
+#else
+            const int INLINE_FORMAT_BUFFER_LEN =2048;
+            char* buf = new char[INLINE_FORMAT_BUFFER_LEN + 1];
+            if (buf != 0)
+            {
+                int len  =vsnprintf(buf,INLINE_FORMAT_BUFFER_LEN, format_string, argList);
+                assign(buf,buf+len);
+                delete[] buf;
+            }
+#endif
             va_end( argList );
-
             return *this;
 		}
 
@@ -1488,27 +1490,29 @@ namespace std
 				return *this;
 			}
 
-			va_list argList;
-			value_type* pbuf = 0;
-			va_start( argList, format_string );
+            va_list argList;
+            va_start( argList, format_string );
 #ifdef _WIN32
 			int len = _vscwprintf( format_string, argList );
-#else
-            int len = vswprintf(nullptr, 0, format_string, argList);
-#endif
-			pbuf = new value_type[len + 1];
-			if (pbuf != 0)
+            value_type* buf = new value_type[len + 1];
+			if (buf != 0)
 			{
-#ifdef _WIN32
-				vswprintf_s( pbuf, len + 1, format_string, argList );
-#else
-                vswprintf(pbuf,len + 1, format_string, argList);
-#endif
-				*this = pbuf;
+                vswprintf_s(buf, len + 1, format_string, argList );
+                assign(buf,buf+len);
+                delete[] buf;
 			}
-			delete[] pbuf;
-			va_end( argList );
+#else
+             const int INLINE_FORMAT_BUFFER_LEN =2048;
+            value_type* buf = new value_type[INLINE_FORMAT_BUFFER_LEN];
+            if (buf != 0)
+            {
+                int len = vswprintf(buf, INLINE_FORMAT_BUFFER_LEN, format_string, argList );
+                assign(buf,buf+len);
+                delete[] buf;
+            }
 
+#endif
+            va_end( argList );
 			return *this;
 		}
 
