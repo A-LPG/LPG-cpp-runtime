@@ -1,13 +1,16 @@
 #pragma once
 #include "Differ.h"
 
+#include <string>
+#include <vector>
+
 struct DifferLines :  Differ
 {
-    std::vector<ILine*> line_pool;
+    std::vector<Differ::ILine*> line_pool;
     //
     // Class that encodes the meaningful content of a line.
     //
-    struct Line : ILine
+    struct Line : Differ::ILine
     {
         std::vector<int>   kind;
         std::vector<std::wstring>  name;
@@ -25,7 +28,7 @@ struct DifferLines :  Differ
 
         int hashCode() { return hash_code; }
 
-        bool equals(ILine* anObject);
+        bool equals(Differ::ILine* anObject);
 
         int getStartLine() { return start_line; }
         int getStartColumn() { return start_column; }
@@ -39,7 +42,8 @@ struct DifferLines :  Differ
     ~DifferLines();
      DifferLines() {}
 
-    static void getBuffer(IPrsStream* prsStream, std::vector<ILine*>& line_pool);
+    static void getBuffer(IPrsStream* prsStream,
+                          std::vector<Differ::ILine*>& line_pool);
 
     //
     //

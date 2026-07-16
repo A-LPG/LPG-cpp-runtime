@@ -75,7 +75,7 @@ DifferLines::Line::Line(IPrsStream* stream, int start_token, int gate_token):buf
 	hash_code += buffer_length;
 }
 
-bool DifferLines::Line::equals(ILine* anObject)
+bool DifferLines::Line::equals(Differ::ILine* anObject)
 {
 	if (this == anObject)
 		return true;
@@ -99,7 +99,8 @@ bool DifferLines::Line::equals(ILine* anObject)
 	return false;
 }
 
-void DifferLines::getBuffer(IPrsStream* prsStream, std::vector<ILine*>& buffer)
+void DifferLines::getBuffer(IPrsStream* prsStream,
+                            std::vector<Differ::ILine*>& buffer)
 {
 	ILexStream *lex_stream = prsStream->getILexStream();
 	buffer.resize(lex_stream->getLineCount() + 1);
