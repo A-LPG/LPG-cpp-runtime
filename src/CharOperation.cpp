@@ -1,6 +1,7 @@
 #include "lpg2/CharOperation.h"
 
 #include <cassert>
+#include <cstdint>
 #include <locale>
 #include <string>
 #include "lpg2/U_chars.h"
