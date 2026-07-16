@@ -56,14 +56,17 @@ public:
     {
         if (new_size > size)
         {
-            if(info != nullptr){
-                T *old_info = info;
-                info = (T *) memmove(new T[new_size], old_info, size * sizeof(T));
-                delete [] old_info;
-            }else{
-                info =new T[new_size];
+            T *new_info = new T[new_size];
+            if (info != nullptr)
+            {
+                // Copy only the live prefix. Avoid memmove(dst, src, size*...) when
+                // size may be 0 / poisoned — GCC 13+ fortified builds treat that as
+                // -Wstringop-overflow and can fail the nested CI compile.
+                if (size > 0)
+                    memcpy(new_info, info, static_cast<size_t>(size) * sizeof(T));
+                delete[] info;
             }
-
+            info = new_info;
         }
         size = new_size;
 
