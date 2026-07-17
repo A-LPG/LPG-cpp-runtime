@@ -53,6 +53,7 @@ public:
     bool isNullable(int index) { return _isNullable[index] != 0; }
     const   signed int* _prosthesesIndex;
     int prosthesesIndex(int index) { return _prosthesesIndex[index]; }
+    int getProsthesisIndex(int index) { return _prs->getProsthesisIndex(index); }
     const   char* _isKeyword;
     bool isKeyword(int index) { return _isKeyword[index] != 0; }
 	

@@ -101,6 +101,14 @@ struct ParseTable
     virtual bool isValidForParser() = 0;
 
     virtual bool getBacktrack() = 0;
+
+    //
+    // Map a nonterminal token kind (a symbol value with NT_OFFSET already
+    // applied) to a compact index into the RuleAction::getProstheticAst()
+    // array. Tables generated for grammars without %Recover symbols use this
+    // default, which selects the null-factory slot.
+    //
+    virtual int getProsthesisIndex(int /*index*/) { return 0; }
 	
     virtual int getIdentifier_SYMBOL() = 0;
 

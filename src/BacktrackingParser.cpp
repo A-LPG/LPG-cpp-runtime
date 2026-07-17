@@ -4,6 +4,7 @@
 #include "lpg2/ConfigurationStack.h"
 #include "lpg2/ErrorToken.h"
 #include "lpg2/Exception.h"
+#include "lpg2/IAst.h"
 #include "lpg2/IPrsStream.h"
 #include "lpg2/IToken.h"
 #include "lpg2/Monitor.h"
@@ -452,9 +453,22 @@ Object* BacktrackingParser::parseActions(int marker_kind)
 		{
 			if (tokStream->getKind(curtok) > NT_OFFSET)
 			{
-				auto badtok = (ErrorToken*)((IPrsStream*)tokStream)->getIToken(curtok);
-				throw BadParseException(badtok->getErrorToken()->getTokenIndex());
-				// parseStack[stateStackTop] = ra->prostheticAst[prs->getProsthesisIndex(tokStream->getKind(curtok))].create(tokStream->getIToken(curtok));
+				//
+				// A replayed nonterminal ErrorToken (inserted by scope
+				// recovery). If the RuleAction supplies prosthetic-AST
+				// factories, synthesize a placeholder node; otherwise keep the
+				// historical behavior of throwing a BadParseException.
+				//
+				std::vector<ProstheticAst>* prostheticAst = ra->getProstheticAst();
+				ProstheticAst* prosthesis = (prostheticAst == nullptr)
+					? nullptr
+					: &(*prostheticAst)[prs->getProsthesisIndex(tokStream->getKind(curtok))];
+				if (prosthesis == nullptr || !*prosthesis)
+				{
+					auto badtok = (ErrorToken*)((IPrsStream*)tokStream)->getIToken(curtok);
+					throw BadParseException(badtok->getErrorToken()->getTokenIndex());
+				}
+				parseStack[stateStackTop] = (*prosthesis)(((IPrsStream*)tokStream)->getIToken(curtok));
 			}
 			lastToken = curtok;
 			curtok = tokens->get(++ti);
