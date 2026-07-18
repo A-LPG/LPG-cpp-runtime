@@ -10,6 +10,8 @@ struct IAst:public   Object, virtual  IGetToken
 {
 	virtual ~IAst() = default;
 	virtual IAst * getNextAst() = 0;
+	virtual void setNextAst(IAst* /*n*/) {}
+	virtual void resetNextAst() {}
     virtual IAst* getParent() = 0;
    
     virtual std::vector<IToken*> getPrecedingAdjuncts() = 0;

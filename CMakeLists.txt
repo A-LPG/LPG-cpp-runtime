@@ -77,6 +77,7 @@ set(CPPLPG2_LIST
         src/DifferLines.cpp
         src/DifferTokens.cpp
         src/ErrorToken.cpp
+        src/GLRParser.cpp
         src/IcuUtil.cpp
         src/LexParser.cpp
         src/LexStream.cpp

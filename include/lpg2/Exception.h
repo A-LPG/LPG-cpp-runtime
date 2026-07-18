@@ -110,6 +110,27 @@ struct NotBacktrackParseTableException :public std::exception
     }
     std::string toString() { return str; }
 };
+struct NotGLRParseTableException :public std::exception
+{
+    /**
+     *
+     */
+     [[nodiscard]] const char* what() const noexcept 
+    {
+        return  str.c_str();
+    }
+    std::string str;
+
+    NotGLRParseTableException()
+    {
+        str = "NotGLRParseTableException";
+    }
+    NotGLRParseTableException(const std::string& str)
+    {
+        this->str = str;
+    }
+    std::string toString() { return str; }
+};
 struct MismatchedInputCharsException :public std::exception
 {
     /**
