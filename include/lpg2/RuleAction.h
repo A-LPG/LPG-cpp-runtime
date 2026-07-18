@@ -3,6 +3,8 @@
 #include "AstPoolHolder.h"
 #include "ProstheticAst.h"
 
+struct BacktrackingParser;
+
 struct RuleAction
 {
 	pool_holder _automatic_ast_pool;
@@ -18,4 +20,8 @@ struct RuleAction
 	// nonterminal token.
 	//
 	virtual std::vector<ProstheticAst>* getProstheticAst() { return nullptr; }
+
+	// GLR→BT recover fallback: rule-action accessors read BT stacks while set.
+	virtual void setRecoverParser(BacktrackingParser* /*parser*/) {}
+	virtual BacktrackingParser* getRecoverParser() { return nullptr; }
 };

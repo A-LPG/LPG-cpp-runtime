@@ -22,6 +22,7 @@ struct GLRParser : public Stacks
     int ERROR_ACTION = 0;
 
     TokenStream* tokStream = nullptr;
+    ParseTable* prsTable = nullptr;
     ParseTableProxy* prs = nullptr;
     RuleAction* ra = nullptr;
 
@@ -62,5 +63,10 @@ struct GLRParser : public Stacks
     GLRParser(Monitor* monitor, TokenStream* tokStream, ParseTable* prs, RuleAction* ra);
 
     Object* parse();
+    Object* parse(int max_error_count);
     Object* parseEntry(int marker_kind);
+    Object* parseEntry(int marker_kind, int max_error_count);
+
+private:
+    Object* parseEntryNoRepair(int marker_kind);
 };

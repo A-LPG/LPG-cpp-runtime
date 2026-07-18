@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 
+#include "lpg2/BacktrackingParser.h"
 #include "lpg2/Exception.h"
 #include "lpg2/IAst.h"
 #include "lpg2/ILexStream.h"
@@ -669,6 +670,7 @@ void GLRParser::reset(Monitor* monitor, TokenStream* tokStream, ParseTable* prs,
     reset(monitor, tokStream);
 
     delete this->prs;
+    this->prsTable = prs;
     this->prs = new ParseTableProxy(prs);
     this->ra = ra;
 
@@ -709,7 +711,43 @@ Object* GLRParser::parse()
     return parseEntry(0);
 }
 
+Object* GLRParser::parse(int max_error_count)
+{
+    return parseEntry(0, max_error_count);
+}
+
 Object* GLRParser::parseEntry(int marker_kind)
+{
+    return parseEntryNoRepair(marker_kind);
+}
+
+Object* GLRParser::parseEntry(int marker_kind, int max_error_count)
+{
+    try
+    {
+        return parseEntryNoRepair(marker_kind);
+    }
+    catch (BadParseException&)
+    {
+        if (max_error_count <= 0)
+            throw;
+        BacktrackingParser bt(monitor, tokStream, prsTable, ra);
+        ra->setRecoverParser(&bt);
+        try
+        {
+            Object* result = bt.fuzzyParseEntry(marker_kind, max_error_count);
+            ra->setRecoverParser(nullptr);
+            return result;
+        }
+        catch (...)
+        {
+            ra->setRecoverParser(nullptr);
+            throw;
+        }
+    }
+}
+
+Object* GLRParser::parseEntryNoRepair(int marker_kind)
 {
     tokStream->reset();
     std::unordered_map<ReductionKey, IAst*, ReductionKeyHash> familyCache;
