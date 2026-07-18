@@ -1,6 +1,9 @@
 #include "lpg2/GLRParser.h"
 
+#include <climits>
 #include <deque>
+#include <algorithm>
+#include <memory>
 #include <stdexcept>
 #include <unordered_map>
 #include <unordered_set>
@@ -8,6 +11,8 @@
 #include <vector>
 
 #include "lpg2/BacktrackingParser.h"
+#include "lpg2/GssNode.h"
+#include "lpg2/SppfNode.h"
 #include "lpg2/Exception.h"
 #include "lpg2/IAst.h"
 #include "lpg2/ILexStream.h"
@@ -29,9 +34,10 @@ struct AcceptCandidate
 {
     Object* ast;
     int grammarSymbol;
+    SppfNode* sppf;
 
-    AcceptCandidate(Object* ast, int grammarSymbol)
-        : ast(ast), grammarSymbol(grammarSymbol)
+    AcceptCandidate(Object* ast, int grammarSymbol, SppfNode* sppf)
+        : ast(ast), grammarSymbol(grammarSymbol), sppf(sppf)
     {
     }
 };
@@ -42,6 +48,8 @@ struct Config
     std::vector<int> symbolStack;
     std::vector<Object*> parseStack;
     std::vector<int> locationStack;
+    std::vector<SppfNode*> sppfStack;
+    GssNode* gssTip = nullptr;
     int stateStackTop = -1;
     int currentAction = 0;
     int curtok = 0;
@@ -206,16 +214,12 @@ static void ensureCapacity(Config& c, int need, int stackIncrement)
     int len = static_cast<int>(c.stateStack.size());
     if (need < len)
         return;
-    int neu = need + 8;
-    if (neu < len + stackIncrement)
-        neu = len + stackIncrement;
-    if (static_cast<int>(c.stateStack.size()) < neu)
-    {
-        c.stateStack.resize(neu);
-        c.symbolStack.resize(neu);
-        c.parseStack.resize(neu);
-        c.locationStack.resize(neu);
-    }
+    int neu = std::max(need + 8, len + stackIncrement);
+    c.stateStack.resize(neu);
+    c.symbolStack.resize(neu);
+    c.parseStack.resize(neu);
+    c.locationStack.resize(neu);
+    c.sppfStack.resize(neu);
 }
 
 static bool sameSpan(Object* a, Object* b)
@@ -392,7 +396,29 @@ static void applyReduceClosure(
         if (fork.stateStackTop - (rhs - 1) < 0)
             throw std::runtime_error("GLR reduce stack underflow");
 
+        std::vector<SppfNode*> kids(static_cast<size_t>(std::max(rhs, 0)));
+        if (rhs > 0)
+        {
+            for (int i = 0; i < rhs; i++)
+                kids[static_cast<size_t>(i)] =
+                    fork.sppfStack[static_cast<size_t>(fork.stateStackTop - rhs + 1 + i)];
+        }
         fork.stateStackTop -= (rhs - 1);
+        if (rhs > 0)
+        {
+            for (int i = 0; i < rhs - 1; i++)
+                fork.gssTip = GLRParser::gssPop(fork.gssTip);
+        }
+        else
+        {
+            ensureCapacity(fork, fork.stateStackTop + 1, 1024);
+            fork.gssTip = parser->gssPush(
+                fork.gssTip,
+                fork.stateStack[static_cast<size_t>(fork.stateStackTop)],
+                fork.locationStack[static_cast<size_t>(fork.stateStackTop)],
+                0, nullptr, nullptr);
+        }
+
         ReductionKey reductionKey(
             action, fork.lastToken, rhs, fork.stateStackTop,
             fork.locationStack, fork.symbolStack, fork.parseStack);
@@ -408,7 +434,7 @@ static void applyReduceClosure(
 
         int lhs = prs->lhs(action);
         int lhsSymbol = NT_OFFSET + lhs;
-        Object* result = fork.parseStack[fork.stateStackTop];
+        Object* result = fork.parseStack[static_cast<size_t>(fork.stateStackTop)];
         if (dynamic_cast<IAst*>(result) != nullptr)
         {
             auto famIt = familyCache.find(reductionKey);
@@ -435,10 +461,30 @@ static void applyReduceClosure(
             }
             else
                 canonical = famIt->second;
-            fork.parseStack[fork.stateStackTop] = canonical;
+            fork.parseStack[static_cast<size_t>(fork.stateStackTop)] = canonical;
+            result = canonical;
         }
-        fork.symbolStack[fork.stateStackTop] = lhsSymbol;
-        action = prs->ntAction(fork.stateStack[fork.stateStackTop], lhs);
+
+        int leftExt = fork.locationStack[static_cast<size_t>(fork.stateStackTop)];
+        int rightExt = fork.lastToken;
+        if (auto* iast = dynamic_cast<IAst*>(result))
+        {
+            IToken* lt = iast->getLeftIToken();
+            IToken* rt = iast->getRightIToken();
+            if (lt != nullptr && rt != nullptr)
+            {
+                leftExt = lt->getTokenIndex();
+                rightExt = rt->getTokenIndex();
+            }
+        }
+        SppfNode* symNode = parser->sppfSymbol(lhsSymbol, leftExt, rightExt);
+        parser->addPacked(symNode, action, kids, result);
+        if (dynamic_cast<IAst*>(result) != nullptr)
+            symNode->astForest = result;
+        fork.sppfStack[static_cast<size_t>(fork.stateStackTop)] = symNode;
+        fork.symbolStack[static_cast<size_t>(fork.stateStackTop)] = lhsSymbol;
+        fork.gssTip = parser->gssRelabel(fork.gssTip, lhsSymbol, leftExt, result, symNode);
+        action = prs->ntAction(fork.stateStack[static_cast<size_t>(fork.stateStackTop)], lhs);
     } while (action <= NUM_RULES);
 
     fork.currentAction = action;
@@ -466,12 +512,16 @@ static void applyConcreteAction(
     if (cand <= NUM_RULES)
     {
         fork.stateStackTop--;
+        fork.gssTip = GLRParser::gssPop(fork.gssTip);
         applyReduceClosure(fork, cand, work, parser, prs, ra, NUM_RULES, NT_OFFSET,
                            familyCache, forestCache);
     }
     else if (cand > ERROR_ACTION)
     {
         fork.symbolStack[fork.stateStackTop] = fork.currentKind;
+        SppfNode* term = parser->terminalSppf(fork.currentKind, fork.curtok);
+        fork.sppfStack[fork.stateStackTop] = term;
+        fork.gssTip = parser->gssRelabel(fork.gssTip, fork.currentKind, fork.curtok, nullptr, term);
         fork.lastToken = fork.curtok;
         fork.curtok = tokStream->getNext(fork.curtok);
         fork.currentKind = tokStream->getKind(fork.curtok);
@@ -481,6 +531,9 @@ static void applyConcreteAction(
     else if (cand < ACCEPT_ACTION)
     {
         fork.symbolStack[fork.stateStackTop] = fork.currentKind;
+        SppfNode* term = parser->terminalSppf(fork.currentKind, fork.curtok);
+        fork.sppfStack[fork.stateStackTop] = term;
+        fork.gssTip = parser->gssRelabel(fork.gssTip, fork.currentKind, fork.curtok, nullptr, term);
         fork.lastToken = fork.curtok;
         fork.curtok = tokStream->getNext(fork.curtok);
         fork.currentKind = tokStream->getKind(fork.curtok);
@@ -491,12 +544,15 @@ static void applyConcreteAction(
     {
         Object* root = nullptr;
         int rootSymbol = 0;
+        SppfNode* rootSppf = nullptr;
         if (!fork.parseStack.empty()
             && parseStackRoot < static_cast<int>(fork.parseStack.size()))
             root = fork.parseStack[parseStackRoot];
         if (parseStackRoot <= fork.stateStackTop)
             rootSymbol = fork.symbolStack[parseStackRoot];
-        accepts.emplace_back(root == nullptr ? NULL_RESULT : root, rootSymbol);
+        if (parseStackRoot < static_cast<int>(fork.sppfStack.size()))
+            rootSppf = fork.sppfStack[parseStackRoot];
+        accepts.emplace_back(root == nullptr ? NULL_RESULT : root, rootSymbol, rootSppf);
     }
 }
 
@@ -526,7 +582,7 @@ static void stepConfig(
     {
         if (--guard < 0)
             throw std::runtime_error(
-                "cyclic/ε-loop grammar not supported by GLR v1");
+                "cyclic/ε-loop grammar not supported by GLR v2");
 
         Config c = work.back();
         work.pop_back();
@@ -534,8 +590,10 @@ static void stepConfig(
         c.stateStack[++c.stateStackTop] = c.currentAction;
         c.locationStack[c.stateStackTop] = c.curtok;
         c.symbolStack[c.stateStackTop] = 0;
+        c.sppfStack[c.stateStackTop] = nullptr;
         if (c.stateStackTop != parseStackRoot)
             c.parseStack[c.stateStackTop] = nullptr;
+        c.gssTip = parser->gssPush(c.gssTip, c.currentAction, c.curtok, 0, nullptr, nullptr);
 
         int act = parser->tAction(c.currentAction, c.currentKind, c.curtok);
         std::vector<int> candidates;
@@ -651,6 +709,7 @@ void GLRParser::setMonitor(Monitor* monitor)
 void GLRParser::reset()
 {
     taking_actions = false;
+    clearForest();
 }
 
 void GLRParser::reset(Monitor* monitor, TokenStream* tokStream)
@@ -750,6 +809,7 @@ Object* GLRParser::parseEntry(int marker_kind, int max_error_count)
 Object* GLRParser::parseEntryNoRepair(int marker_kind)
 {
     tokStream->reset();
+    clearForest();
     std::unordered_map<ReductionKey, IAst*, ReductionKeyHash> familyCache;
     std::unordered_map<ForestKey, IAst*, ForestKeyHash> forestCache;
 
@@ -780,7 +840,7 @@ Object* GLRParser::parseEntryNoRepair(int marker_kind)
             return nullptr;
         if (--outerGuard < 0)
             throw std::runtime_error(
-                "cyclic/ε-loop grammar not supported by GLR v1");
+                "cyclic/ε-loop grammar not supported by GLR v2");
 
         std::deque<Config> next;
         std::unordered_map<ConfigKey, std::vector<Config*>, ConfigKeyHash> packed;
@@ -845,13 +905,117 @@ Object* GLRParser::parseEntryNoRepair(int marker_kind)
 
     Object* root = accepts[0].ast;
     int rootSymbol = accepts[0].grammarSymbol;
+    sppfRoot = accepts[0].sppf;
     for (size_t i = 1; i < accepts.size(); i++)
     {
         AcceptCandidate& other = accepts[i];
         if (other.grammarSymbol != rootSymbol)
             throw std::runtime_error("GLR accepted distinct start symbols");
+        if (sppfRoot == nullptr)
+            sppfRoot = other.sppf;
         if (!appendNextAst(root, other.ast))
             throw std::runtime_error("overlapping GLR accept forests");
     }
+    sppfSymbolCount = static_cast<int>(sppfNodes.size());
     return root == NULL_RESULT ? nullptr : root;
+}
+
+void GLRParser::clearForest()
+{
+    sppfStorage.clear();
+    gssStorage.clear();
+    sppfNodes.clear();
+    gssNodes.clear();
+    sppfRoot = nullptr;
+    sppfSymbolCount = 0;
+}
+
+SppfNode* GLRParser::sppfSymbol(int grammarSymbol, int leftExtent, int rightExtent)
+{
+    long long key = (static_cast<long long>(grammarSymbol) * 1315423911LL)
+        + leftExtent * 31LL + rightExtent;
+    auto it = sppfNodes.find(key);
+    if (it != sppfNodes.end())
+        return it->second;
+    sppfStorage.push_back(std::make_unique<SppfNode>(grammarSymbol, leftExtent, rightExtent));
+    SppfNode* n = sppfStorage.back().get();
+    sppfNodes[key] = n;
+    return n;
+}
+
+SppfNode* GLRParser::terminalSppf(int kind, int tok)
+{
+    SppfNode* term = sppfSymbol(kind, tok, tok);
+    if (term->packs.empty())
+        term->packs.emplace_back(-kind, std::vector<SppfNode*>{}, nullptr);
+    return term;
+}
+
+void GLRParser::addPacked(SppfNode* symNode, int rule,
+                          const std::vector<SppfNode*>& children, Object* semantic)
+{
+    for (const auto& pk : symNode->packs)
+    {
+        if (pk.rule != rule || pk.children.size() != children.size())
+            continue;
+        bool same = true;
+        for (size_t c = 0; c < children.size(); c++)
+        {
+            if (pk.children[c] != children[c])
+            {
+                same = false;
+                break;
+            }
+        }
+        if (same)
+            return;
+    }
+    symNode->packs.emplace_back(rule, children, semantic);
+}
+
+GssNode* GLRParser::gssPush(GssNode* tip, int state, int index, int symbol,
+                            Object* semantic, SppfNode* sppf)
+{
+    gssStorage.push_back(std::make_unique<GssNode>(state, index));
+    GssNode* n = gssStorage.back().get();
+    GssNode* pred = tip;
+    if (pred == nullptr)
+    {
+        gssStorage.push_back(std::make_unique<GssNode>(INT_MIN, -1));
+        pred = gssStorage.back().get();
+    }
+    n->edges.emplace_back(pred, symbol, index, semantic, sppf);
+    long long key = (static_cast<long long>(state) << 32) ^ (index & 0xffffffffLL);
+    auto it = gssNodes.find(key);
+    GssNode* canon = nullptr;
+    if (it == gssNodes.end())
+    {
+        gssStorage.push_back(std::make_unique<GssNode>(state, index));
+        canon = gssStorage.back().get();
+        gssNodes[key] = canon;
+    }
+    else
+        canon = it->second;
+    canon->edges.emplace_back(pred, symbol, index, semantic, sppf);
+    return n;
+}
+
+GssNode* GLRParser::gssPop(GssNode* tip)
+{
+    if (tip == nullptr || tip->edges.empty())
+        return nullptr;
+    GssNode* pred = tip->edges[0].predecessor;
+    return (pred != nullptr && pred->state == INT_MIN) ? nullptr : pred;
+}
+
+GssNode* GLRParser::gssRelabel(GssNode* tip, int symbol, int location,
+                               Object* semantic, SppfNode* sppf)
+{
+    if (tip == nullptr || tip->edges.empty())
+        return tip;
+    GssNode* pred = tip->edges[0].predecessor;
+    gssStorage.push_back(std::make_unique<GssNode>(tip->state, tip->index));
+    GssNode* n = gssStorage.back().get();
+    n->edges.emplace_back(pred, symbol, location, semantic, sppf);
+    return n;
 }
